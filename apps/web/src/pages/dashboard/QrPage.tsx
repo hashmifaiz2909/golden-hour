@@ -21,7 +21,7 @@ export const QrPage: React.FC = () => {
 
   const [publicBaseUrl, setPublicBaseUrl] = useState<string>(() => {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return 'https://those-fully-maiden-restored.trycloudflare.com';
+      return 'https://golden-hour-emergency.onrender.com';
     }
     return window.location.origin;
   });
@@ -242,14 +242,14 @@ export const QrPage: React.FC = () => {
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => setPublicBaseUrl('https://those-fully-maiden-restored.trycloudflare.com')}
+                onClick={() => setPublicBaseUrl('https://golden-hour-emergency.onrender.com')}
                 className={`text-[10px] font-mono px-2.5 py-1 rounded-lg border transition-all ${
-                  publicBaseUrl.includes('trycloudflare.com')
+                  publicBaseUrl.includes('onrender.com')
                     ? 'bg-[#1C5C53] text-white border-[#1C5C53]'
                     : 'bg-white text-[#5A6B66] border-[#D9DFD6] hover:text-[#11332D]'
                 }`}
               >
-                Use Cloudflare Tunnel
+                Use 24/7 Cloud Host
               </button>
               <button
                 type="button"
