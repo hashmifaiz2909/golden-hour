@@ -1,0 +1,17 @@
+{
+  "name": "golden-hour-monorepo",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Golden Hour — SIH 2026 AI-Assisted Road Accident Emergency Response Platform",
+  "private": true,
+  "scripts": {
+    "start": "node services/backend/dist/services/backend/src/server.js",
+    "start:backend": "cd services/backend && npm run dev",
+    "start:web": "cd apps/web && npm run dev",
+    "start:ml": "python3 services/ml/app.py",
+    "build": "cd services/backend && npm run build && cd ../../apps/web && npm run build",
+    "install:all": "npm install --prefix services/backend && npm install --prefix apps/web",
+    "test": "node --test tests/*.test.js"
+  },
+  "keywords": ["sih2026", "medtech", "emergency-response", "crash-detection", "golden-hour"]
+}

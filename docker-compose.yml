@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  ml-service:
+    build:
+      context: .
+      dockerfile: services/ml/Dockerfile
+    container_name: golden-hour-ml
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+
+  backend:
+    build:
+      context: .
+      dockerfile: services/backend/Dockerfile
+    container_name: golden-hour-backend
+    restart: unless-stopped
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./services/backend/data:/app/services/backend/data
+    environment:
+      - PORT=5050
+      - NODE_ENV=production
+      - JWT_SECRET=golden-hour-production-emergency-jwt-secret-key-2026
+      - ML_SERVICE_URL=http://ml-service:5001
+      - MOCK_NOTIFICATIONS=true
+    depends_on:
+      - ml-service
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: golden-hour-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://backend:5050
+    depends_on:
+      - backend

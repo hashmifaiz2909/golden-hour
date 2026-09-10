@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.local
+.bin/
+*.log
+dist/
+services/backend/data/*.db*
+.DS_Store
+scratch/

@@ -1,0 +1,152 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+svg {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+:root {
+  --vlink-trust-deep: #11332D;
+  --vlink-trust: #1C5C53;
+  --vlink-pulse: #FF5A4E;
+  --vlink-pulse-dim: rgba(255, 90, 78, 0.1);
+  --vlink-paper: #F1F4EE;
+  --vlink-line: #D9DFD6;
+  --vlink-ink: #1A2421;
+  --vlink-ink-soft: #5A6B66;
+  --vlink-success: #10B981;
+
+  --font-body: 'Inter', sans-serif;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--vlink-paper);
+  color: var(--vlink-ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Background utilities */
+.bg-vlink-paper { background-color: var(--vlink-paper); }
+.bg-vlink-trust-deep { background-color: var(--vlink-trust-deep); }
+.bg-vlink-trust { background-color: var(--vlink-trust); }
+.bg-vlink-pulse { background-color: var(--vlink-pulse); }
+.bg-vlink-pulse-dim { background-color: var(--vlink-pulse-dim); }
+.bg-vlink-line { background-color: var(--vlink-line); }
+
+/* Text utilities */
+.text-vlink-ink { color: var(--vlink-ink); }
+.text-vlink-ink-soft { color: var(--vlink-ink-soft); }
+.text-vlink-trust-deep { color: var(--vlink-trust-deep); }
+.text-vlink-trust { color: var(--vlink-trust); }
+.text-vlink-pulse { color: var(--vlink-pulse); }
+.text-vlink-paper { color: var(--vlink-paper); }
+.text-vlink-success { color: var(--vlink-success); }
+
+/* Border utilities */
+.border-vlink-line { border-color: var(--vlink-line); }
+.border-vlink-trust { border-color: var(--vlink-trust); }
+.border-vlink-trust-deep { border-color: var(--vlink-trust-deep); }
+.border-vlink-pulse { border-color: var(--vlink-pulse); }
+
+/* SVG Pulse Line Blip Animation */
+@keyframes travel-blip {
+  0% { offset-distance: 0%; }
+  100% { offset-distance: 100%; }
+}
+
+.pulse-line-blip {
+  animation: travel-blip 3s linear infinite;
+}
+
+/* Beacon Animation */
+@keyframes beacon {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 90, 78, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(255, 90, 78, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 90, 78, 0);
+  }
+}
+
+.animate-beacon {
+  animation: beacon 2s infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 90, 78, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 15px 4px rgba(255, 90, 78, 0.25);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s infinite;
+}
+
+/* Glass card styles */
+.glass-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(217, 223, 214, 0.6);
+}
+
+.glass-dark {
+  background: rgba(17, 51, 45, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Print Card Styling */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .print-card {
+    border: 2px solid #000 !important;
+    border-radius: 12px !important;
+    padding: 15px !important;
+    width: 3.375in !important;
+    height: 2.125in !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+  }
+}
