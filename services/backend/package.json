@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/services/backend/src/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"import('fs').then(fs => fs.writeFileSync('dist/index.js', 'import \\\"./services/backend/src/server.js\\\";\\\\n'))\"",
     "start": "node dist/services/backend/src/server.js",
     "dev": "tsx watch src/server.ts",
     "seed:riders": "tsx src/scripts/seedRiders.ts",

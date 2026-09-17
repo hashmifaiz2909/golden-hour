@@ -10,7 +10,7 @@
     "start:web": "cd apps/web && npm run dev",
     "start:ml": "python3 services/ml/app.py",
     "build": "cd services/backend && npm run build && cd ../../apps/web && npm run build",
-    "install:all": "npm install --prefix services/backend && npm install --prefix apps/web",
+    "install:all": "npm install --include=dev --prefix services/backend && npm install --include=dev --prefix apps/web",
     "verify:twilio": "cd services/backend && npm run test:twilio",
     "test:twilio": "cd services/backend && npm run test:twilio --",
     "test": "node --test tests/*.test.js"
