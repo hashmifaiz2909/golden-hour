@@ -5,6 +5,7 @@
   "description": "Golden Hour — SIH 2026 AI-Assisted Road Accident Emergency Response Platform",
   "private": true,
   "scripts": {
+    "dev": "npm run start:backend & npm run start:web",
     "start": "node services/backend/dist/services/backend/src/server.js",
     "start:backend": "cd services/backend && npm run dev",
     "start:web": "cd apps/web && npm run dev",

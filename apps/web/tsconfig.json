@@ -15,11 +15,12 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
+    "types": ["node"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
       "@shared/*": ["../../shared/*"]
     }
   },
-  "include": ["src", "../../shared"]
+  "include": ["src", "../../shared", "vite.config.ts"]
 }
