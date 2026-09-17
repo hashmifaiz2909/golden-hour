@@ -25,6 +25,8 @@ export const MobileAppPage: React.FC = () => {
     lastAlert, 
     thresholdConfig, 
     updateThresholdConfig,
+    iosPermissionState,
+    requestIosPermission,
     cancelCrashEvent, 
     confirmCrashNow, 
     simulateImpact, 
@@ -61,6 +63,14 @@ export const MobileAppPage: React.FC = () => {
       });
     }
   }, [profile]);
+
+  // Auto-start safety monitoring when permission is permitted (Android / Desktop / granted iOS)
+  React.useEffect(() => {
+    if ((iosPermissionState === 'not_required' || iosPermissionState === 'granted') && !isMonitoring) {
+      console.log('[MobileAppPage] Auto-starting safety monitoring on ride screen mount.');
+      startMonitoring();
+    }
+  }, [iosPermissionState, isMonitoring, startMonitoring]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,8 +211,31 @@ export const MobileAppPage: React.FC = () => {
                     ? 'Accelerometer & Gyroscope sensors are streaming. Sudden kinetic impacts trigger a 20s confirmation safeguard.'
                     : 'Turn on safety monitoring before you begin riding to enable automatic crash detection.'}
                 </p>
-                <div className="mt-3 flex gap-2">
-                  {isMonitoring ? (
+                <div className="mt-3">
+                  {iosPermissionState === 'prompt' ? (
+                    <div className="space-y-2">
+                      <button
+                        onClick={requestIosPermission}
+                        className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+                      >
+                        <Shield className="w-4 h-4" />
+                        <span>Enable Crash Detection (iOS Motion)</span>
+                      </button>
+                      <p className="text-[10px] text-slate-500 text-center">
+                        Tap to allow Apple Safari motion sensor access for crash detection.
+                      </p>
+                    </div>
+                  ) : iosPermissionState === 'denied' ? (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-1.5">
+                      <div className="flex items-center gap-1.5 font-bold text-rose-900">
+                        <AlertOctagon className="w-4 h-4 text-rose-600" />
+                        <span>Motion Sensors Blocked</span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-rose-700">
+                        To enable automatic crash detection on iPhone: Open <strong>Settings &gt; Safari &gt; Motion &amp; Orientation Access</strong> (turn ON), then reload this page.
+                      </p>
+                    </div>
+                  ) : isMonitoring ? (
                     <button
                       onClick={stopMonitoring}
                       className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"

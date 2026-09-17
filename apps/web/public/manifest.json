@@ -1,0 +1,29 @@
+{
+  "name": "Golden Hour",
+  "short_name": "GoldenHour",
+  "description": "AI-Assisted Road Accident Emergency Response Platform",
+  "theme_color": "#11332D",
+  "background_color": "#11332D",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "start_url": "/",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

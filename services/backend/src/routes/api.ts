@@ -34,6 +34,9 @@ router.get('/events', (req, res) => {
 router.post('/auth/register', authCtrl.register);
 router.post('/auth/login', authCtrl.login);
 router.get('/auth/me', authCtrl.getMe);
+router.post('/auth/forgot-password', authCtrl.forgotPassword);
+router.get('/auth/verify-reset-token', authCtrl.verifyResetToken);
+router.post('/auth/reset-password', authCtrl.resetPassword);
 
 // 4. Rider Profile Routes
 router.get('/profile', profileCtrl.getProfile);

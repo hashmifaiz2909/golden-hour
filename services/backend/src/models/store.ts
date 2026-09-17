@@ -91,7 +91,7 @@ export interface NotificationLog {
   alertId?: string;
   recipientName: string;
   recipientPhone: string;
-  type: 'sms' | 'email' | 'push' | 'webhook' | 'mock_dispatch';
+  type: 'sms' | 'call' | 'whatsapp' | 'email' | 'push' | 'webhook' | 'mock_dispatch';
   status: 'queued' | 'sent' | 'delivered' | 'failed' | 'simulated_delivered';
   message: string;
   sentAt: string;
@@ -159,6 +159,56 @@ class DatabaseStore {
       passwordHash: user.passwordHash,
       role: user.role,
       createdAt
+    };
+  }
+
+  updateUserPassword(userId: string, passwordHash: string): boolean {
+    const result = sqlite.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, userId);
+    return result.changes > 0;
+  }
+
+  // --- PASSWORD RESET TOKEN METHODS ---
+  createPasswordResetToken(userId: string, token: string, expiresInMinutes = 60) {
+    const id = `prt-${uuidv4().slice(0, 8)}`;
+    const createdAt = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
+
+    sqlite.prepare(`
+      INSERT INTO password_reset_tokens (id, user_id, token, expires_at, used_at, created_at)
+      VALUES (?, ?, ?, ?, NULL, ?)
+    `).run(id, userId, token, expiresAt, createdAt);
+
+    return { id, userId, token, expiresAt, createdAt };
+  }
+
+  getPasswordResetToken(token: string) {
+    const row = sqlite.prepare('SELECT * FROM password_reset_tokens WHERE token = ?').get(token) as any;
+    if (!row) return undefined;
+    return {
+      id: row.id,
+      userId: row.user_id,
+      token: row.token,
+      expiresAt: row.expires_at,
+      usedAt: row.used_at,
+      createdAt: row.created_at
+    };
+  }
+
+  markPasswordResetTokenUsed(id: string) {
+    const usedAt = new Date().toISOString();
+    sqlite.prepare('UPDATE password_reset_tokens SET used_at = ? WHERE id = ?').run(usedAt, id);
+  }
+
+  getLatestPasswordResetTokenByUserId(userId: string) {
+    const row = sqlite.prepare('SELECT * FROM password_reset_tokens WHERE user_id = ? ORDER BY created_at DESC LIMIT 1').get(userId) as any;
+    if (!row) return undefined;
+    return {
+      id: row.id,
+      userId: row.user_id,
+      token: row.token,
+      expiresAt: row.expires_at,
+      usedAt: row.used_at,
+      createdAt: row.created_at
     };
   }
 
@@ -496,8 +546,8 @@ class DatabaseStore {
     const sentAt = new Date().toISOString();
 
     sqlite.prepare(`
-      INSERT INTO notifications (id, incident_id, recipient_name, recipient_phone, type, status, message, provider, sent_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO notifications (id, incident_id, recipient_name, recipient_phone, type, status, message, provider, provider_message_id, error, sent_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id,
       notif.alertId || null,
@@ -507,6 +557,8 @@ class DatabaseStore {
       notif.status,
       notif.message,
       notif.provider,
+      notif.providerMessageId || null,
+      notif.error || null,
       sentAt
     );
 
@@ -519,6 +571,8 @@ class DatabaseStore {
       status: notif.status,
       message: notif.message,
       provider: notif.provider,
+      providerMessageId: notif.providerMessageId,
+      error: notif.error,
       sentAt
     };
   }
@@ -534,6 +588,8 @@ class DatabaseStore {
       status: r.status,
       message: r.message,
       provider: r.provider,
+      providerMessageId: r.provider_message_id,
+      error: r.error,
       sentAt: r.sent_at
     }));
   }
@@ -549,6 +605,8 @@ class DatabaseStore {
       status: r.status,
       message: r.message,
       provider: r.provider,
+      providerMessageId: r.provider_message_id,
+      error: r.error,
       sentAt: r.sent_at
     }));
   }

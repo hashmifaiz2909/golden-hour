@@ -15,6 +15,8 @@ interface RiderContextType {
   countdown: number;
   lastAlert: Alert | null;
   thresholdConfig: CrashThresholdConfig;
+  iosPermissionState: import('../services/sensorEngine').MotionPermissionState;
+  requestIosPermission: () => Promise<import('../services/sensorEngine').MotionPermissionState>;
   loadProfile: () => Promise<void>;
   updateProfile: (updated: Partial<MedicalProfile>) => Promise<void>;
   createProfile: (data: Partial<MedicalProfile>) => Promise<MedicalProfile>;
@@ -60,6 +62,13 @@ export const RiderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [countdown, setCountdown] = useState<number>(20);
   const [lastAlert, setLastAlert] = useState<Alert | null>(null);
   const [thresholdConfig, setThresholdConfig] = useState<CrashThresholdConfig>({ ...DEFAULT_CRASH_CONFIG });
+  const [iosPermissionState, setIosPermissionState] = useState<import('../services/sensorEngine').MotionPermissionState>(() => sensorEngine.getMotionPermissionState());
+
+  const requestIosPermission = useCallback(async () => {
+    const res = await sensorEngine.requestIosMotionPermission();
+    setIosPermissionState(res);
+    return res;
+  }, []);
 
   const loadProfile = useCallback(async () => {
     if (!token || user?.role !== 'rider') return;
@@ -313,6 +322,8 @@ export const RiderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         countdown,
         lastAlert,
         thresholdConfig,
+        iosPermissionState,
+        requestIosPermission,
         loadProfile,
         updateProfile,
         createProfile,

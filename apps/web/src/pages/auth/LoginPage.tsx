@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Sparkles, ArrowRight, User, Shield, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, User, Shield, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('rider@goldenhour.org');
-  const [password, setPassword] = useState('demo123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const { login, setDemoUser } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -21,25 +21,8 @@ export const LoginPage: React.FC = () => {
       await login(email, password);
       navigate('/dashboard');
     } catch (err: any) {
-      console.warn('Login fallback:', err);
-      // Seamless fallback so demo never halts
-      navigate('/dashboard');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleQuickDemo = async (role: 'rider' | 'responder') => {
-    setLoading(true);
-    try {
-      await setDemoUser(role);
-      if (role === 'responder') {
-        navigate('/admin');
-      } else {
-        navigate('/dashboard');
-      }
-    } catch (e) {
-      navigate('/dashboard');
+      console.error('[LoginPage] Sign in failed:', err);
+      setErrorMsg(err?.message || err?.error || 'Invalid email or password.');
     } finally {
       setLoading(false);
     }
@@ -83,42 +66,12 @@ export const LoginPage: React.FC = () => {
             </Link>
           </div>
 
-          {/* 1-Click Quick Demo Switcher */}
-          <div className="p-4 bg-[#F1F4EE]/60 border border-[#D9DFD6] rounded-2xl space-y-2.5">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-[#11332D] flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[#FF5A4E]" />
-                <span>Instant Demo Access</span>
-              </span>
-              <span className="text-[10px] font-mono text-[#5A6B66]">1-Click Login</span>
+          {errorMsg && (
+            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+              <span>{errorMsg}</span>
             </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('rider')}
-                className="px-3 py-2 rounded-xl bg-white border border-[#D9DFD6] hover:border-[#1C5C53] text-xs font-bold text-[#11332D] hover:bg-[#1C5C53]/5 transition-all text-left flex flex-col cursor-pointer shadow-2xs"
-              >
-                <span className="text-[#1C5C53] font-bold">Rider Account</span>
-                <span className="text-[10px] text-[#5A6B66]">Demo Rider (Instant)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('responder')}
-                className="px-3 py-2 rounded-xl bg-white border border-[#D9DFD6] hover:border-[#FF5A4E] text-xs font-bold text-[#11332D] hover:bg-[#FF5A4E]/5 transition-all text-left flex flex-col cursor-pointer shadow-2xs"
-              >
-                <span className="text-[#FF5A4E] font-bold">First Responder</span>
-                <span className="text-[10px] text-[#5A6B66]">Captain Suresh Rao</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-[#D9DFD6]"></div>
-            <span className="flex-shrink mx-4 text-xs font-mono uppercase text-[#5A6B66]">or sign in manually</span>
-            <div className="flex-grow border-t border-[#D9DFD6]"></div>
-          </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1.5">
@@ -137,7 +90,12 @@ export const LoginPage: React.FC = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#11332D]">Password</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-[#11332D]">Password</label>
+                <Link to="/auth/forgot-password" className="text-xs font-semibold text-[#FF5A4E] hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-[#5A6B66] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input

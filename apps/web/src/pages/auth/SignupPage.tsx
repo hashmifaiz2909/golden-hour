@@ -45,20 +45,7 @@ export const SignupPage: React.FC = () => {
       // Direct to Profile Creation & Customization
       navigate('/dashboard/profile');
     } catch (err: any) {
-      console.warn('Signup warning:', err);
-      // Fallback local flow so user is never blocked
-      const randomTag = `GH-${Math.floor(1000 + Math.random() * 9000)}`;
-      await createProfile({
-        name: userName,
-        tagId: randomTag,
-        bloodGroup: 'O+',
-        allergies: [],
-        medicalConditions: [],
-        emergencyContacts: [
-          { id: `c-${Date.now()}`, name: '', phone: '', relationship: 'Family / ICE', isPrimary: true }
-        ]
-      });
-      navigate('/dashboard/profile');
+      setErrorMsg(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }

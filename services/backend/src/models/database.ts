@@ -138,7 +138,21 @@ export function initDatabase() {
       ip_address TEXT,
       user_agent TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
   `);
+
+  // Safe runtime migrations for notification metadata
+  try { sqlite.exec(`ALTER TABLE notifications ADD COLUMN provider_message_id TEXT;`); } catch (_) {}
+  try { sqlite.exec(`ALTER TABLE notifications ADD COLUMN error TEXT;`); } catch (_) {}
 
   seedIfEmpty();
 }

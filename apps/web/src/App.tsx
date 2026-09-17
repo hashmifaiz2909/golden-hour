@@ -13,6 +13,8 @@ import { FeaturesPage } from './pages/features/FeaturesPage';
 import { PricingPage } from './pages/pricing/PricingPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { SignupPage } from './pages/auth/SignupPage';
+import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { ProfilePage } from './pages/dashboard/ProfilePage';
 import { QrPage } from './pages/dashboard/QrPage';
@@ -44,6 +46,8 @@ export const App: React.FC = () => {
                   {/* Auth Pages */}
                   <Route path="/auth/login" element={<LoginPage />} />
                   <Route path="/auth/signup" element={<SignupPage />} />
+                  <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
 
                   {/* Customer Dashboard Suite (Protected - Must Sign In to Access) */}
                   <Route

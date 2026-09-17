@@ -1,3 +1,4 @@
+import twilio from 'twilio';
 import { config } from '../config/index.js';
 import { db, Alert, EmergencyContact } from '../models/store.js';
 
@@ -6,9 +7,27 @@ export interface SendEmergencyNotificationParams {
   contacts: EmergencyContact[];
 }
 
+function formatE164(phone: string): string {
+  const cleaned = (phone || '').replace(/[^0-9+]/g, '');
+  if (cleaned.startsWith('+')) return cleaned;
+  if (cleaned.length === 10) return `+91${cleaned}`;
+  if (cleaned.startsWith('0') && cleaned.length === 11) return `+91${cleaned.slice(1)}`;
+  return `+${cleaned}`;
+}
+
+function formatWhatsAppNumber(phone: string): string {
+  const e164 = formatE164(phone);
+  return e164.startsWith('whatsapp:') ? e164 : `whatsapp:${e164}`;
+}
+
 export class NotificationService {
+  private getTwilioClient(): twilio.Twilio | null {
+    if (!config.twilio.accountSid || !config.twilio.authToken) return null;
+    return twilio(config.twilio.accountSid, config.twilio.authToken);
+  }
+
   /**
-   * Dispatches emergency SMS & Email alerts to all registered emergency contacts and trauma desks
+   * Dispatches emergency Call, WhatsApp, SMS & Email alerts to registered emergency contacts
    */
   async dispatchEmergencyAlerts(params: SendEmergencyNotificationParams): Promise<void> {
     const { alert, contacts } = params;
@@ -30,17 +49,232 @@ export class NotificationService {
       `Medical Tag: ${alert.tagId}\n` +
       `Emergency medical response has been notified.`;
 
-    // 1. Dispatch SMS Alerts
+    // 1. Keep SMS explicitly mocked (per Indian DLT regulations)
     for (const contact of contacts) {
-      if (config.twilio.enabled) {
-        await this.sendTwilioSms(contact, messageBody, alert.id);
-      } else {
-        this.sendMockSms(contact, messageBody, alert.id);
-      }
+      this.sendMockSms(contact, messageBody, alert.id);
     }
 
-    // 2. Dispatch Emergency Email Alerts (Resend / SendGrid / Simulated)
+    // 2. Identify primary emergency contact for outbound Voice Call & WhatsApp
+    const primaryContact = contacts.find(c => c.isPrimary) || contacts[0];
+
+    // 3. Dispatch Real Outbound Voice Call via Twilio
+    if (config.twilio.enabled) {
+      await this.placeTwilioVoiceCall(primaryContact, alert);
+    } else {
+      this.sendMockVoiceCall(
+        primaryContact,
+        `This is an automated emergency alert from Golden Hour. ${alert.riderName} may have been involved in an accident. Please check on them immediately.`,
+        alert.id
+      );
+    }
+
+    // 4. Dispatch Real WhatsApp Message via Twilio
+    if (config.twilio.enabled) {
+      await this.sendTwilioWhatsApp(primaryContact, alert, mapLink);
+    } else {
+      this.sendMockWhatsApp(
+        primaryContact,
+        `🚨 *[GOLDEN HOUR EMERGENCY ALERT]* 🚨\nPossible road accident detected for *${alert.riderName}*.\n📍 Location: ${mapLink}`,
+        alert.id
+      );
+    }
+
+    // 5. Dispatch Emergency Email Alerts (Resend / SendGrid / Simulated)
     await this.dispatchEmergencyEmailAlerts(alert, contacts, mapLink);
+  }
+
+  /**
+   * Outbound automated voice call via Twilio Voice TwiML
+   */
+  private async placeTwilioVoiceCall(contact: EmergencyContact, alert: Alert): Promise<void> {
+    if (!contact.phone) {
+      console.warn(`[NotificationService] Cannot place voice call: Contact ${contact.name} has no phone number.`);
+      return;
+    }
+
+    const toPhone = formatE164(contact.phone);
+    const fromPhone = formatE164(config.twilio.fromPhone);
+    const speechMessage = `This is an automated emergency alert from Golden Hour. ${alert.riderName} may have been involved in an accident. Please check on them immediately.`;
+
+    console.log(`\n========================================================`);
+    console.log(`📞 [TWILIO VOICE OUTBOUND CALL INITIATING]`);
+    console.log(`   To:    ${contact.name} (${toPhone})`);
+    console.log(`   From:  ${fromPhone}`);
+    console.log(`   TwiML: "${speechMessage}"`);
+    console.log(`========================================================\n`);
+
+    const client = this.getTwilioClient();
+    if (!client || !fromPhone) {
+      console.warn('[NotificationService] Twilio client or TWILIO_FROM_PHONE not configured. Falling back to mock call.');
+      this.sendMockVoiceCall(contact, speechMessage, alert.id);
+      return;
+    }
+
+    try {
+      const twimletUrl = `https://twimlets.com/message?Message%5B0%5D=${encodeURIComponent(speechMessage)}`;
+
+      const call = await client.calls.create({
+        url: twimletUrl,
+        to: toPhone,
+        from: fromPhone
+      });
+
+      console.log(`✅ [Twilio Voice Call Placed Successfully]`);
+      console.log(`   Call SID:   ${call.sid}`);
+      console.log(`   Status:     ${call.status}`);
+      console.log(`   Direction:  ${call.direction}`);
+
+      db.addNotification({
+        alertId: alert.id,
+        recipientName: contact.name,
+        recipientPhone: toPhone,
+        type: 'call',
+        status: 'sent',
+        message: speechMessage,
+        provider: 'twilio',
+        providerMessageId: call.sid
+      });
+    } catch (err: any) {
+      const errorCode = err.code || err.status || 'UNKNOWN';
+      const errorMessage = err.message || 'Unknown Twilio Voice error';
+      const moreInfo = err.moreInfo ? ` (${err.moreInfo})` : '';
+
+      console.error(`❌ [NotificationService] Twilio Voice Call Failed [Code ${errorCode}]: ${errorMessage}${moreInfo}`);
+
+      db.addNotification({
+        alertId: alert.id,
+        recipientName: contact.name,
+        recipientPhone: toPhone,
+        type: 'call',
+        status: 'failed',
+        message: speechMessage,
+        provider: 'twilio',
+        error: `[Twilio Code ${errorCode}] ${errorMessage}`
+      });
+    }
+  }
+
+  /**
+   * Outbound WhatsApp message via Twilio Messaging
+   */
+  private async sendTwilioWhatsApp(contact: EmergencyContact, alert: Alert, mapLink: string): Promise<void> {
+    if (!contact.phone) {
+      console.warn(`[NotificationService] Cannot send WhatsApp: Contact ${contact.name} has no phone number.`);
+      return;
+    }
+
+    const toWhatsApp = formatWhatsAppNumber(contact.phone);
+    const rawFrom = config.twilio.whatsappFrom || 'whatsapp:+14155238886';
+    const fromWhatsApp = rawFrom.startsWith('whatsapp:') ? rawFrom : `whatsapp:${rawFrom}`;
+
+    const whatsappBody = `🚨 *[GOLDEN HOUR EMERGENCY ALERT]* 🚨\n\n` +
+      `Possible road accident detected for *${alert.riderName}*.\n` +
+      `⏱ *Time:* ${new Date(alert.timestamp).toLocaleTimeString()}\n` +
+      `📍 *Live Location:* ${mapLink}\n` +
+      `🆔 *Emergency Tag ID:* ${alert.tagId}\n\n` +
+      `⚠️ *Note:* This is an automated safety alert from Golden Hour emergency response platform. Please check on ${alert.riderName} immediately.`;
+
+    console.log(`\n========================================================`);
+    console.log(`📱 [TWILIO WHATSAPP MESSAGE DISPATCHING]`);
+    console.log(`   To:    ${contact.name} (${toWhatsApp})`);
+    console.log(`   From:  ${fromWhatsApp}`);
+    console.log(`   Content Preview: ${whatsappBody.slice(0, 80)}...`);
+    console.log(`========================================================\n`);
+
+    const client = this.getTwilioClient();
+    if (!client) {
+      console.warn('[NotificationService] Twilio client not configured. Falling back to mock WhatsApp.');
+      this.sendMockWhatsApp(contact, whatsappBody, alert.id);
+      return;
+    }
+
+    try {
+      const messageParams: any = {
+        to: toWhatsApp,
+        from: fromWhatsApp
+      };
+
+      if (config.twilio.contentSid) {
+        messageParams.contentSid = config.twilio.contentSid;
+        messageParams.contentVariables = JSON.stringify({
+          1: alert.riderName,
+          2: alert.locationName || mapLink,
+          3: mapLink
+        });
+      } else {
+        messageParams.body = whatsappBody;
+      }
+
+      const message = await client.messages.create(messageParams);
+
+      console.log(`✅ [Twilio WhatsApp Sent Successfully]`);
+      console.log(`   Message SID: ${message.sid}`);
+      console.log(`   Status:      ${message.status}`);
+
+      db.addNotification({
+        alertId: alert.id,
+        recipientName: contact.name,
+        recipientPhone: toWhatsApp,
+        type: 'whatsapp',
+        status: 'sent',
+        message: whatsappBody,
+        provider: 'twilio',
+        providerMessageId: message.sid
+      });
+    } catch (err: any) {
+      const errorCode = err.code || err.status || 'UNKNOWN';
+      const errorMessage = err.message || 'Unknown Twilio WhatsApp error';
+      const moreInfo = err.moreInfo ? ` (${err.moreInfo})` : '';
+
+      console.error(`❌ [NotificationService] Twilio WhatsApp Failed [Code ${errorCode}]: ${errorMessage}${moreInfo}`);
+
+      db.addNotification({
+        alertId: alert.id,
+        recipientName: contact.name,
+        recipientPhone: toWhatsApp,
+        type: 'whatsapp',
+        status: 'failed',
+        message: whatsappBody,
+        provider: 'twilio',
+        error: `[Twilio Code ${errorCode}] ${errorMessage}`
+      });
+    }
+  }
+
+  private sendMockVoiceCall(contact: EmergencyContact, speechMessage: string, alertId: string): void {
+    console.log(`\n========================================`);
+    console.log(`📞 [SIMULATED VOICE CALL DISPATCH]`);
+    console.log(`To: ${contact.name} (${contact.phone})`);
+    console.log(`Message: "${speechMessage}"`);
+    console.log(`========================================\n`);
+
+    db.addNotification({
+      alertId,
+      recipientName: contact.name,
+      recipientPhone: contact.phone,
+      type: 'call',
+      status: 'simulated_delivered',
+      message: speechMessage,
+      provider: 'mock'
+    });
+  }
+
+  private sendMockWhatsApp(contact: EmergencyContact, message: string, alertId: string): void {
+    console.log(`\n========================================`);
+    console.log(`📱 [SIMULATED WHATSAPP DISPATCH]`);
+    console.log(`To: ${contact.name} (${contact.phone})`);
+    console.log(`Content:\n${message}`);
+    console.log(`========================================\n`);
+
+    db.addNotification({
+      alertId,
+      recipientName: contact.name,
+      recipientPhone: contact.phone,
+      type: 'whatsapp',
+      status: 'simulated_delivered',
+      message,
+      provider: 'mock'
+    });
   }
 
   private sendMockSms(contact: EmergencyContact, message: string, alertId: string): void {
@@ -58,65 +292,6 @@ export class NotificationService {
       message,
       provider: 'mock'
     });
-  }
-
-  private async sendTwilioSms(contact: EmergencyContact, message: string, alertId: string): Promise<void> {
-    try {
-      const auth = Buffer.from(`${config.twilio.accountSid}:${config.twilio.authToken}`).toString('base64');
-      const url = `https://api.twilio.com/2010-04-01/Accounts/${config.twilio.accountSid}/Messages.json`;
-
-      const params = new URLSearchParams();
-      params.append('To', contact.phone);
-      params.append('From', config.twilio.fromPhone);
-      params.append('Body', message);
-
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: params.toString()
-      });
-
-      const json: any = await res.json();
-
-      if (res.ok) {
-        db.addNotification({
-          alertId,
-          recipientName: contact.name,
-          recipientPhone: contact.phone,
-          type: 'sms',
-          status: 'sent',
-          message,
-          provider: 'twilio',
-          providerMessageId: json.sid
-        });
-      } else {
-        db.addNotification({
-          alertId,
-          recipientName: contact.name,
-          recipientPhone: contact.phone,
-          type: 'sms',
-          status: 'failed',
-          message,
-          provider: 'twilio',
-          error: json.message || 'Twilio API Error'
-        });
-      }
-    } catch (err: any) {
-      console.error('[NotificationService] Twilio SMS dispatch exception:', err);
-      db.addNotification({
-        alertId,
-        recipientName: contact.name,
-        recipientPhone: contact.phone,
-        type: 'sms',
-        status: 'failed',
-        message,
-        provider: 'twilio',
-        error: err.message || 'Network error'
-      });
-    }
   }
 
   /**

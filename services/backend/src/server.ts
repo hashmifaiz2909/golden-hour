@@ -54,6 +54,19 @@ const webDistPath = candidateDistDirs.find(d => fs.existsSync(path.join(d, 'inde
 
 if (webDistPath) {
   console.log(`[Web Static] Serving compiled web assets from: ${webDistPath}`);
+  
+  app.get('/manifest.json', (req, res) => {
+    const jsonPath = path.join(webDistPath, 'manifest.json');
+    const webmanifestPath = path.join(webDistPath, 'manifest.webmanifest');
+    if (fs.existsSync(jsonPath)) {
+      res.type('application/manifest+json').sendFile(jsonPath);
+    } else if (fs.existsSync(webmanifestPath)) {
+      res.type('application/manifest+json').sendFile(webmanifestPath);
+    } else {
+      res.status(404).send('Not Found');
+    }
+  });
+
   app.use(express.static(webDistPath));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api')) return next();
